@@ -1,0 +1,36 @@
+# dependencias
+node_modules/
+
+# entorno y secretos
+.env
+.env.*
+!.env.example
+*firebase-adminsdk*.json
+serviceAccount*.json
+*-firebase-adminsdk-*.json
+credentials*.json
+secrets/
+*.pem
+*.key
+
+# caches y reportes operativos
+data/cache/
+reports/
+logs/
+*.log
+
+# sistema/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.claude/settings.local.json
+
+# builds temporales
+dist/
+build/
+coverage/
+
+# documentos internos / privados
+traspaso_chatgpt.md
+private/

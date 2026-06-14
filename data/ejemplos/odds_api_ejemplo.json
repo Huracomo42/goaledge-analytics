@@ -1,0 +1,155 @@
+{
+  "_nota": "Respuesta SINTÉTICA imitando The Odds API v4 GET /v4/sports/{sport}/odds?markets=h2h,totals",
+  "_confianza": {
+    "alta": [
+      "La respuesta es un array de eventos",
+      "Campos: id, sport_key, sport_title, commence_time, home_team, away_team, bookmakers",
+      "bookmakers[].key, .title, .last_update, .markets",
+      "markets[].key ('h2h' | 'totals'), .last_update, .outcomes",
+      "outcomes[].price (cuota decimal)",
+      "outcomes[].name para h2h: nombre del equipo local, nombre visitante, 'Draw'",
+      "outcomes[].point para totals: la linea (ej. 2.5)"
+    ],
+    "inferida_no_verificada": [
+      "sport_key exacto para WC 2026 — podria ser 'soccer_fifa_world_cup_2026' u otro slug",
+      "Nombre exacto del Draw: asumo 'Draw' (mayuscula). Podria ser 'draw' en minuscula",
+      "Orden de outcomes dentro del array — el codigo NO debe depender del orden, solo del 'name'",
+      "Si multiples lineas de totals (2.5, 3.5) aparecen en el mismo objeto o en calls separadas"
+    ],
+    "no_verificada": [
+      "Los bookmakers especificos disponibles para WC 2026 en region 'eu' dependen del plan de API"
+    ]
+  },
+  "eventos": [
+    {
+      "id": "odds_api_synthetic_mexico_korea_20260619",
+      "sport_key": "soccer_fifa_world_cup",
+      "sport_title": "FIFA World Cup",
+      "commence_time": "2026-06-19T18:00:00Z",
+      "home_team": "Mexico",
+      "away_team": "South Korea",
+      "bookmakers": [
+        {
+          "key": "bet365",
+          "title": "Bet365",
+          "last_update": "2026-06-19T10:00:00Z",
+          "markets": [
+            {
+              "key": "h2h",
+              "last_update": "2026-06-19T10:00:00Z",
+              "outcomes": [
+                { "name": "Mexico",      "price": 2.10 },
+                { "name": "Draw",        "price": 3.30 },
+                { "name": "South Korea", "price": 3.60 }
+              ]
+            },
+            {
+              "key": "totals",
+              "last_update": "2026-06-19T10:00:00Z",
+              "outcomes": [
+                { "name": "Over",  "price": 1.95, "point": 2.5 },
+                { "name": "Under", "price": 1.90, "point": 2.5 }
+              ]
+            }
+          ]
+        },
+        {
+          "key": "betmgm",
+          "title": "BetMGM",
+          "last_update": "2026-06-19T10:05:00Z",
+          "markets": [
+            {
+              "key": "h2h",
+              "last_update": "2026-06-19T10:05:00Z",
+              "outcomes": [
+                { "name": "Mexico",      "price": 2.15 },
+                { "name": "Draw",        "price": 3.25 },
+                { "name": "South Korea", "price": 3.55 }
+              ]
+            },
+            {
+              "key": "totals",
+              "last_update": "2026-06-19T10:05:00Z",
+              "outcomes": [
+                { "name": "Over",  "price": 1.97, "point": 2.5 },
+                { "name": "Under", "price": 1.88, "point": 2.5 }
+              ]
+            }
+          ]
+        },
+        {
+          "key": "fanduel",
+          "title": "FanDuel",
+          "last_update": "2026-06-19T10:02:00Z",
+          "markets": [
+            {
+              "key": "h2h",
+              "last_update": "2026-06-19T10:02:00Z",
+              "outcomes": [
+                { "name": "Mexico",      "price": 2.12 },
+                { "name": "Draw",        "price": 3.35 },
+                { "name": "South Korea", "price": 3.50 }
+              ]
+            },
+            {
+              "key": "totals",
+              "last_update": "2026-06-19T10:02:00Z",
+              "outcomes": [
+                { "name": "Over",  "price": 1.93, "point": 2.5 },
+                { "name": "Under", "price": 1.92, "point": 2.5 }
+              ]
+            }
+          ]
+        },
+        {
+          "key": "draftkings",
+          "title": "DraftKings",
+          "last_update": "2026-06-19T10:08:00Z",
+          "markets": [
+            {
+              "key": "h2h",
+              "last_update": "2026-06-19T10:08:00Z",
+              "outcomes": [
+                { "name": "Mexico",      "price": 2.20 },
+                { "name": "Draw",        "price": 3.20 },
+                { "name": "South Korea", "price": 3.45 }
+              ]
+            },
+            {
+              "key": "totals",
+              "last_update": "2026-06-19T10:08:00Z",
+              "outcomes": [
+                { "name": "Over",  "price": 1.95, "point": 2.5 },
+                { "name": "Under", "price": 1.90, "point": 2.5 }
+              ]
+            }
+          ]
+        },
+        {
+          "key": "williamhill",
+          "title": "William Hill",
+          "last_update": "2026-06-19T09:55:00Z",
+          "markets": [
+            {
+              "key": "h2h",
+              "last_update": "2026-06-19T09:55:00Z",
+              "outcomes": [
+                { "name": "Mexico",      "price": 2.08 },
+                { "name": "Draw",        "price": 3.40 },
+                { "name": "South Korea", "price": 3.65 }
+              ]
+            },
+            {
+              "key": "totals",
+              "last_update": "2026-06-19T09:55:00Z",
+              "outcomes": [
+                { "name": "Over",  "price": 1.90, "point": 2.5 },
+                { "name": "Under", "price": 1.95, "point": 2.5 }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
