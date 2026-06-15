@@ -69,9 +69,20 @@ for (const p of j2) {
     const fL = (guardado.muestra_local?.fuente ?? '').replace('fotmob_mundial_2026+historial','wc+hist').replace('fotmob_mundial_2026','wc').replace('default_mu_liga','default');
     const fV = (guardado.muestra_visitante?.fuente ?? '').replace('fotmob_mundial_2026+historial','wc+hist').replace('fotmob_mundial_2026','wc').replace('default_mu_liga','default');
 
-    console.log(`  λ     : ${guardado.lambda_local?.toFixed(3)} — ${guardado.lambda_visitante?.toFixed(3)}`);
+    const am = guardado.ajustes_modelo;
+    const lambdaBaseL = am?.lambda_base_local?.toFixed(3) ?? '?';
+    const lambdaBaseV = am?.lambda_base_visitante?.toFixed(3) ?? '?';
+    const lambdaFinalL = guardado.lambda_local?.toFixed(3);
+    const lambdaFinalV = guardado.lambda_visitante?.toFixed(3);
+    const deltaL = am?.delta_lambda_local_pct != null ? `${am.delta_lambda_local_pct > 0 ? '+' : ''}${am.delta_lambda_local_pct}%` : '';
+    const deltaV = am?.delta_lambda_visit_pct != null ? `${am.delta_lambda_visit_pct > 0 ? '+' : ''}${am.delta_lambda_visit_pct}%` : '';
+    const psicoTag = am?.psicodeportivo_activo ? ' [psico]' : '';
+    const rankTag  = am?.contexto_mundialista_activo ? ' [ranking]' : '';
+    console.log(`  λ base: ${lambdaBaseL} — ${lambdaBaseV}`);
+    console.log(`  λ adj : ${lambdaFinalL} (${deltaL}) — ${lambdaFinalV} (${deltaV})${psicoTag}${rankTag}`);
     console.log(`  1X2   : L ${pct(guardado.prob_1x2?.local)}  X ${pct(guardado.prob_1x2?.empate)}  V ${pct(guardado.prob_1x2?.visitante)}`);
     console.log(`  Local : n=${nL} (${fL})   Visit: n=${nV} (${fV})${flagRerun ? '  ⚑ RE-CORRER' : ''}`);
+    console.log(`  Versión: ${guardado.version_modelo ?? '?'}`);
     console.log(`\n${SEP}\n`);
 
     resumen.push({ fecha, grupo, local, visit, nL, fL, nV, fV, rerun: flagRerun, matchId: p.id });
