@@ -1,0 +1,86 @@
+[
+  {
+    "matchId": 537327,
+    "goles_local": 2,
+    "goles_visitante": 0,
+    "xg_local_real": null,
+    "xg_visitante_real": null
+  },
+  {
+    "matchId": 537328,
+    "goles_local": 2,
+    "goles_visitante": 1,
+    "xg_local_real": null,
+    "xg_visitante_real": null
+  },
+  {
+    "matchId": 537333,
+    "goles_local": 1,
+    "goles_visitante": 1,
+    "xg_local_real": null,
+    "xg_visitante_real": null
+  },
+  {
+    "matchId": 537345,
+    "goles_local": 4,
+    "goles_visitante": 1,
+    "xg_local_real": null,
+    "xg_visitante_real": null
+  },
+  {
+    "matchId": 537334,
+    "goles_local": 1,
+    "goles_visitante": 1,
+    "xg_local_real": null,
+    "xg_visitante_real": null
+  },
+  {
+    "matchId": 537339,
+    "goles_local": 1,
+    "goles_visitante": 1,
+    "xg_local_real": null,
+    "xg_visitante_real": null
+  },
+  {
+    "matchId": 537340,
+    "goles_local": 0,
+    "goles_visitante": 1,
+    "xg_local_real": null,
+    "xg_visitante_real": null
+  },
+  {
+    "matchId": 537346,
+    "goles_local": 2,
+    "goles_visitante": 0,
+    "xg_local_real": null,
+    "xg_visitante_real": null
+  },
+  {
+    "matchId": 537351,
+    "goles_local": 7,
+    "goles_visitante": 1,
+    "xg_local_real": null,
+    "xg_visitante_real": null
+  },
+  {
+    "matchId": 537357,
+    "goles_local": 2,
+    "goles_visitante": 2,
+    "xg_local_real": null,
+    "xg_visitante_real": null
+  },
+  {
+    "matchId": 537352,
+    "goles_local": 1,
+    "goles_visitante": 0,
+    "xg_local_real": null,
+    "xg_visitante_real": null
+  },
+  {
+    "matchId": 537358,
+    "goles_local": 5,
+    "goles_visitante": 1,
+    "xg_local_real": null,
+    "xg_visitante_real": null
+  }
+]

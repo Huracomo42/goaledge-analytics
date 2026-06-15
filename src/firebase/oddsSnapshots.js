@@ -4,6 +4,27 @@ import { getFirestore } from 'firebase-admin/firestore';
 const db = getFirestore();
 
 /**
+ * Lee un snapshot de odds desde odds_snapshots/{snapshotId}.
+ *
+ * snapshotId tiene el formato "{matchId}_{YYYYMMDDHHmmss}", el mismo que
+ * genera guardarOddsSnapshot(). El valor se obtiene del campo
+ * ultimo_odds_snapshot_id del documento predicciones/{matchId}.
+ *
+ * @param {string} snapshotId — ID completo del documento, ej. "537352_20260618120000"
+ * @returns {object|null} datos del snapshot con `snapshotId` añadido, o null si no existe
+ */
+export async function leerOddsSnapshot(snapshotId) {
+  try {
+    const docRef = db.collection('odds_snapshots').doc(String(snapshotId));
+    const snap   = await docRef.get();
+    if (!snap.exists) return null;
+    return { snapshotId: String(snapshotId), ...snap.data() };
+  } catch (err) {
+    throw new Error(`leerOddsSnapshot(${snapshotId}): ${err.message}`);
+  }
+}
+
+/**
  * Guarda un snapshot de odds en odds_snapshots/{matchId}_{timestamp_compacto}.
  *
  * Usa setDoc: si el mismo docId se genera dos veces (poco probable dado que
