@@ -29,6 +29,8 @@
  */
 
 import 'dotenv/config';
+import { readFileSync, existsSync } from 'fs';
+import { resolve } from 'path';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import '../src/firebase/init.js';
 import {
@@ -36,6 +38,11 @@ import {
   kellyFraction,
   TAU,
 } from '../src/core/betting/bettingMath.js';
+
+import {
+  clasificarSenales,
+  PREDICTION_STATUS,
+} from '../src/core/betting/recommendationPolicy.js';
 
 // ── Argumentos ────────────────────────────────────────────────────────────────
 
@@ -51,17 +58,71 @@ const matchIdsArg = matchIdsFlagIdx !== -1
       .filter(a => /^\d+$/.test(a))
   : [];
 
-if (!fecha && matchIdsArg.length === 0) {
-  console.error('\n  ERROR: debes pasar una fecha YYYY-MM-DD o usar --matchIds <id...>.');
+// --fromConfig config/j2_ids.json
+const fromConfigFlagIdx = args.indexOf('--fromConfig');
+const fromConfigPath    = fromConfigFlagIdx !== -1 ? args[fromConfigFlagIdx + 1] : null;
+
+// Si --fromConfig se pasó, cargar matchIds desde el archivo
+let fromConfigIds = [];
+if (fromConfigPath) {
+  const rawConfig = JSON.parse(readFileSync(resolve(fromConfigPath), 'utf-8'));
+  fromConfigIds = (Array.isArray(rawConfig) ? rawConfig : (rawConfig.partidos ?? []))
+    .map(e => String(e.matchId))
+    .filter(id => /^\d+$/.test(id));
+  if (fromConfigIds.length === 0) {
+    console.error(`\n  ERROR: ${fromConfigPath} no contiene matchIds válidos.\n`);
+    process.exit(1);
+  }
+}
+
+if (!fecha && matchIdsArg.length === 0 && fromConfigIds.length === 0) {
+  console.error('\n  ERROR: debes pasar una fecha YYYY-MM-DD, --matchIds <id...> o --fromConfig <path>.');
   console.error('  Ejemplos:');
   console.error('    node scripts/actualizarSenalesConOdds.js 2026-06-15 --dry-run');
-  console.error('    node scripts/actualizarSenalesConOdds.js --matchIds 537404 --dry-run\n');
+  console.error('    node scripts/actualizarSenalesConOdds.js --matchIds 537404 --dry-run');
+  console.error('    node scripts/actualizarSenalesConOdds.js --fromConfig config/j2_ids.json\n');
   process.exit(1);
 }
 
 const WRITE   = args.includes('--write');
 const DRY_RUN = !WRITE;
-const MODO    = matchIdsArg.length > 0 ? 'matchIds' : 'fecha';
+const MODO    = fromConfigIds.length > 0 ? 'fromConfig'
+              : matchIdsArg.length  > 0 ? 'matchIds'
+              : 'fecha';
+
+// Lista efectiva de matchIds para modos no-fecha
+const efectivosIds = MODO === 'fromConfig' ? fromConfigIds : matchIdsArg;
+
+// ── Caché de odds local ────────────────────────────────────────────────────────
+//
+// Cuando no existe odds_snapshots en Firestore (caso J2), usamos el caché local.
+// Prioridad: odds_j2_h2h_totals_spreads_raw.json  →  odds_j2_raw.json (no procesado)
+//
+const CACHE_PATHS = [
+  resolve('reports', 'odds_j2_h2h_totals_spreads_raw.json'),
+];
+
+let cacheOddsMap = null;   // Map<matchId string → { mercados, capturado_en, fuente_path }>
+
+for (const cachePath of CACHE_PATHS) {
+  if (!existsSync(cachePath)) continue;
+  try {
+    const cacheData = JSON.parse(readFileSync(cachePath, 'utf-8'));
+    const partidos  = cacheData.partidos ?? {};
+    cacheOddsMap    = new Map();
+    for (const [id, entry] of Object.entries(partidos)) {
+      cacheOddsMap.set(String(id), {
+        mercados:    entry.odds?.mercados ?? {},
+        capturado_en: cacheData.meta?.generado_en ?? new Date().toISOString(),
+        fuente_path: cachePath.replace(/\\/g, '/').replace(/.*reports\//, 'reports/'),
+      });
+    }
+    console.log(`\n  Caché odds: ${cachePath.split(/[\\/]/).pop()}  (${cacheOddsMap.size} partidos)`);
+    break;
+  } catch (err) {
+    console.warn(`  WARN: no se pudo leer caché ${cachePath}: ${err.message}`);
+  }
+}
 
 // ── Clasificación de señales ──────────────────────────────────────────────────
 //
@@ -237,11 +298,13 @@ const db = getFirestore();
 console.log('\n' + '═'.repeat(76));
 console.log('  ACTUALIZAR SEÑALES CON ODDS — sin llamar The Odds API');
 if (MODO === 'fecha') {
-  console.log(`  Fecha    : ${fecha}`);
+  console.log(`  Fecha      : ${fecha}`);
+} else if (MODO === 'fromConfig') {
+  console.log(`  Config     : ${fromConfigPath}  (${fromConfigIds.length} matchIds)`);
 } else {
-  console.log(`  MatchIds : ${matchIdsArg.join(', ')}`);
+  console.log(`  MatchIds   : ${matchIdsArg.join(', ')}`);
 }
-console.log(`  Modo     : ${DRY_RUN ? 'DRY-RUN (sin escrituras Firestore)' : 'WRITE'}`);
+console.log(`  Modo       : ${DRY_RUN ? 'DRY-RUN (sin escrituras Firestore)' : 'WRITE'}`);
 console.log('═'.repeat(76));
 
 // ── 1. Leer predicciones ──────────────────────────────────────────────────────
@@ -261,12 +324,14 @@ if (MODO === 'fecha') {
 
   predicciones = predSnap.docs.map(doc => ({
     ...doc.data(),
-    matchId: doc.id,   // siempre string — doc.data().matchId puede ser número
+    matchId: doc.id,
   }));
 } else {
-  console.log(`\n  [1/3] Leyendo ${matchIdsArg.length} predicción(es) por matchId...`);
+  // matchIds o fromConfig — misma lógica de carga
+  const ids = efectivosIds;
+  console.log(`\n  [1/3] Leyendo ${ids.length} predicción(es) por matchId...`);
   const docSnaps = await Promise.all(
-    matchIdsArg.map(id => db.collection('predicciones').doc(String(id)).get())
+    ids.map(id => db.collection('predicciones').doc(String(id)).get())
   );
 
   predicciones = docSnaps
@@ -294,44 +359,96 @@ for (const p of predicciones) {
   console.log(`    ${p.matchId}  ${p.nombreLocal ?? '?'} vs ${p.nombreVisitante ?? '?'}  →  odds: ${snap}`);
 }
 
-// Separar las que tienen snapshot
-const conSnapshot    = predicciones.filter(p => p.ultimo_odds_snapshot_id);
-const sinSnapshot    = predicciones.filter(p => !p.ultimo_odds_snapshot_id);
+// Separar por fuente de odds:
+//   - tienenSnapshot: tienen ultimo_odds_snapshot_id en Firestore
+//   - sinSnapshotConCache: sin snapshot pero caché local disponible
+//   - sinFuente: sin snapshot ni caché → se reportan pero no se procesan
+const tienenSnapshot      = predicciones.filter(p => p.ultimo_odds_snapshot_id);
+const sinSnapshotConCache = predicciones.filter(
+  p => !p.ultimo_odds_snapshot_id && cacheOddsMap?.has(p.matchId)
+);
+const sinFuente = predicciones.filter(
+  p => !p.ultimo_odds_snapshot_id && !cacheOddsMap?.has(p.matchId)
+);
 
-if (sinSnapshot.length > 0) {
-  console.log(`\n  AVISO — ${sinSnapshot.length} predicción(es) sin ultimo_odds_snapshot_id:`);
-  for (const p of sinSnapshot) {
+const conOdds = [...tienenSnapshot, ...sinSnapshotConCache];
+
+if (sinFuente.length > 0) {
+  console.log(`\n  AVISO — ${sinFuente.length} predicción(es) sin odds snapshot ni caché:`);
+  for (const p of sinFuente) {
     console.log(`    ${p.matchId}  ${p.nombreLocal ?? '?'} vs ${p.nombreVisitante ?? '?'}`);
-    console.log(`    → Ejecuta primero: node scripts/guardarOddsDelDia.js ${fecha}`);
+    if (fecha) console.log(`    → Ejecuta primero: node scripts/guardarOddsDelDia.js ${fecha}`);
   }
 }
 
-if (conSnapshot.length === 0) {
-  console.log('\n  Ninguna predicción tiene odds snapshot. Saliendo.');
-  console.log(`  Ejecuta: node scripts/guardarOddsDelDia.js ${fecha}`);
+if (sinSnapshotConCache.length > 0) {
+  console.log(`\n  INFO — ${sinSnapshotConCache.length} predicción(es) sin snapshot Firestore → usando caché local.`);
+}
+
+if (conOdds.length === 0) {
+  console.log('\n  Ninguna predicción tiene odds (ni snapshot ni caché). Saliendo.');
+  if (fecha) console.log(`  Ejecuta: node scripts/guardarOddsDelDia.js ${fecha}`);
   process.exit(0);
 }
 
+// Alias para compatibilidad con el código posterior
+const conSnapshot = conOdds;
+
 // ── 2. Leer odds snapshots ────────────────────────────────────────────────────
 
-console.log(`\n  [2/3] Leyendo ${conSnapshot.length} odds snapshot(s)...`);
-const snapshotsMap = new Map(); // matchId → snapshotData
+console.log(`\n  [2/3] Cargando odds para ${conSnapshot.length} partido(s)...`);
+const snapshotsMap = new Map(); // matchId → snapshotData (real o virtual desde caché)
 
 await Promise.all(conSnapshot.map(async (pred) => {
-  const sid  = pred.ultimo_odds_snapshot_id;
-  const snap = await db.collection('odds_snapshots').doc(sid).get();
-  if (!snap.exists) {
-    console.log(`  WARN  ${pred.matchId}: snapshot "${sid}" no encontrado en Firestore`);
+  const sid = pred.ultimo_odds_snapshot_id;
+
+  // ── Fuente A: odds_snapshots de Firestore ────────────────────────────────
+  if (sid) {
+    const snap = await db.collection('odds_snapshots').doc(sid).get();
+    if (!snap.exists) {
+      console.log(`  WARN  ${pred.matchId}: snapshot "${sid}" no encontrado en Firestore`);
+      // Intentar caché como fallback
+    } else {
+      snapshotsMap.set(pred.matchId, {
+        id:          sid,
+        fuente:      'firestore',
+        fuente_path: `odds_snapshots/${sid}`,
+        ...snap.data(),
+      });
+      const h2h    = snap.data().mercados?.h2h;
+      const totals = snap.data().mercados?.totals;
+      console.log(`    ${pred.matchId}  [firestore] snapshot: ${sid}`);
+      if (h2h)    console.log(`      h2h    : L=${h2h.odds_local} X=${h2h.odds_empate} V=${h2h.odds_visitante}  (n_bk=${h2h.n_bookmakers} overround=${h2h.overround_pct}%)`);
+      if (totals) console.log(`      totals : línea=${totals.linea} over=${totals.odds_over} under=${totals.odds_under}  (n_bk=${totals.n_bookmakers})`);
+      if (!h2h)   console.log(`      AVISO : mercado h2h ausente en el snapshot`);
+      if (!totals) console.log(`      INFO  : mercado totals ausente`);
+      return;
+    }
+  }
+
+  // ── Fuente B: caché local ────────────────────────────────────────────────
+  const cacheEntry = cacheOddsMap?.get(pred.matchId);
+  if (cacheEntry) {
+    const { mercados, capturado_en, fuente_path } = cacheEntry;
+    snapshotsMap.set(pred.matchId, {
+      id:           `cache_${pred.matchId}`,
+      fuente:       'cache',
+      fuente_path:  fuente_path,
+      mercados,
+      tipo_snapshot: 'pre_partido',
+      capturado_en,
+    });
+    const h2h    = mercados?.h2h;
+    const totals = mercados?.totals;
+    console.log(`    ${pred.matchId}  [caché] ${fuente_path}`);
+    if (h2h)    console.log(`      h2h    : L=${h2h.odds_local} X=${h2h.odds_empate} V=${h2h.odds_visitante}  (n_bk=${h2h.n_bookmakers ?? '?'} overround=${h2h.overround_pct ?? '?'}%)`);
+    if (totals) console.log(`      totals : línea=${totals.linea} over=${totals.odds_over} under=${totals.odds_under}  (n_bk=${totals.n_bookmakers ?? '?'})`);
+    if (!h2h)   console.log(`      AVISO : mercado h2h ausente en caché`);
+    if (!totals) console.log(`      INFO  : mercado totals ausente en caché`);
     return;
   }
-  snapshotsMap.set(pred.matchId, { id: sid, ...snap.data() });
-  const h2h    = snap.data().mercados?.h2h;
-  const totals = snap.data().mercados?.totals;
-  console.log(`    ${pred.matchId}  snapshot: ${sid}`);
-  if (h2h)    console.log(`      h2h    : L=${h2h.odds_local} X=${h2h.odds_empate} V=${h2h.odds_visitante}  (n_bk=${h2h.n_bookmakers} overround=${h2h.overround_pct}%)`);
-  if (totals) console.log(`      totals : línea=${totals.linea} over=${totals.odds_over} under=${totals.odds_under}  (n_bk=${totals.n_bookmakers})`);
-  if (!h2h)   console.log(`      AVISO : mercado h2h ausente en el snapshot`);
-  if (!totals) console.log(`      INFO  : mercado totals ausente (BTTS también omitido — no está en la API call)`);
+
+  console.log(`  WARN  ${pred.matchId}: sin snapshot Firestore ni caché. Omitido.`);
 }));
 
 // ── 3. Calcular señales ───────────────────────────────────────────────────────
@@ -375,11 +492,21 @@ for (const pred of conSnapshot) {
   // BTTS — la API call usa markets=h2h,totals; BTTS no está disponible
   todasAdvertencias.push('btts: mercado no capturado en odds_snapshots (API call solo trae h2h,totals)');
 
+  // ── Clasificar con taxonomía post-J1 ──────────────────────────────────────
+  // Enriquece cada señal con betting_status, regla, etiqueta.
+  // Calcula prediction_status, risk_level, model_warnings a nivel de partido.
+  const clasificado = clasificarSenales({
+    prediccion: pred,
+    senales:    todasSenales,
+  });
+  // Las señales enriquecidas conservan todos los campos originales + betting_status
+  const senalesEnriquecidas = clasificado.senales;
+
   // Mostrar señales
-  const conValor = todasSenales.filter(s => s.is_value_bet);
+  const conValor = senalesEnriquecidas.filter(s => s.is_value_bet);
   console.log(`\n  Señales evaluadas: ${todasSenales.length}  |  Con valor (EV > ${TAU}): ${conValor.length}`);
 
-  for (const s of todasSenales) imprimirSenal(s);
+  for (const s of senalesEnriquecidas) imprimirSenal(s);
 
   if (todasAdvertencias.length > 0) {
     console.log('\n  Advertencias:');
@@ -399,29 +526,48 @@ for (const pred of conSnapshot) {
     console.log('\n  (ninguna señal con valor positivo en este partido)');
   }
 
-  const mercadosEvaluados = [...new Set(todasSenales.map(s => s.mercado))];
+  const mercadosEvaluados = [...new Set(senalesEnriquecidas.map(s => s.mercado))];
+
+  // Mostrar clasificación post-J1
+  console.log(`  prediction_status: ${clasificado.prediction_status}  risk_level: ${clasificado.risk_level}`);
+  if (clasificado.model_warnings.length > 0) {
+    console.log(`  model_warnings: ${clasificado.model_warnings.join(', ')}`);
+  }
 
   resultados.push({
     matchId: pred.matchId,
     titulo,
-    snapshotId: snapshot.id,
-    señales:    todasSenales,
-    conValor:   conValor.length,
+    snapshotId:        snapshot.id,
+    fuente:            snapshot.fuente       ?? 'firestore',
+    fuente_path:       snapshot.fuente_path  ?? snapshot.id,
+    capturado_en:      snapshot.capturado_en ?? null,
+    señales:           senalesEnriquecidas,
+    conValor:          conValor.length,
     mercadosEvaluados,
-    advertencias: todasAdvertencias,
+    advertencias:      todasAdvertencias,
+    prediction_status: clasificado.prediction_status,
+    risk_level:        clasificado.risk_level,
+    model_warnings:    clasificado.model_warnings,
   });
 }
 
 // ── Terminar si es dry-run ────────────────────────────────────────────────────
 
 if (DRY_RUN) {
+  const totalSenales = resultados.reduce((a, r) => a + r.señales.length, 0);
+  const totalValor   = resultados.reduce((a, r) => a + r.conValor, 0);
+  const fuentes      = [...new Set(resultados.map(r => r.fuente))];
   console.log('\n' + '═'.repeat(76));
-  console.log(`  DRY-RUN completado.`);
+  console.log('  DRY-RUN completado.');
   console.log(`  Partidos evaluados : ${resultados.length}`);
-  console.log(`  Señales con valor  : ${resultados.reduce((a, r) => a + r.conValor, 0)} total`);
+  console.log(`  Señales calculadas : ${totalSenales} (${totalValor} con valor EV > ${TAU})`);
+  console.log(`  Fuente odds        : ${fuentes.join(', ')}`);
+  console.log(`  Escrituras         : 0`);
   console.log('');
   console.log('  Para escribir en Firestore (update(), no reemplaza predicción):');
-  const cmdWrite = MODO === 'matchIds'
+  const cmdWrite = MODO === 'fromConfig'
+    ? `node scripts/actualizarSenalesConOdds.js --fromConfig ${fromConfigPath} --write`
+    : MODO === 'matchIds'
     ? `node scripts/actualizarSenalesConOdds.js --matchIds ${matchIdsArg.join(' ')} --write`
     : `node scripts/actualizarSenalesConOdds.js ${fecha} --write`;
   console.log(`    ${cmdWrite}`);
@@ -442,9 +588,19 @@ for (const r of resultados) {
     await db.collection('predicciones').doc(String(r.matchId)).update({
       odds_evaluadas:           true,
       ultimo_odds_snapshot_id:  r.snapshotId,
-      señales_valor:            r.señales,
+      señales_valor:            r.señales,        // incluye betting_status por señal
       evaluado_con_odds_en:     FieldValue.serverTimestamp(),
       mercados_evaluados:       r.mercadosEvaluados,
+      // Taxonomía post-J1 a nivel de partido
+      prediction_status:        r.prediction_status,
+      risk_level:               r.risk_level,
+      model_warnings:           r.model_warnings,
+      // Metadata de fuente y conteo
+      fuente_odds:              r.fuente,
+      odds_cache_path:          r.fuente === 'cache' ? r.fuente_path : null,
+      odds_capturado_en:        r.capturado_en,
+      senales_count:            r.señales.length,
+      senales_con_valor_count:  r.conValor,
     });
     console.log(`  ✓  ${r.matchId}  ${r.titulo}  (${r.señales.length} señales, ${r.conValor} con valor)`);
     escritos++;
@@ -459,3 +615,5 @@ console.log('  RESUMEN ESCRITURA');
 console.log(`    Actualizados : ${escritos}`);
 console.log(`    Errores      : ${errores}`);
 console.log('═'.repeat(76));
+
+process.exit(errores > 0 ? 1 : 0);

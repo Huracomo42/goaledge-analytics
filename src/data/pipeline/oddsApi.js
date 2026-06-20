@@ -134,6 +134,86 @@ function procesarTotals(bookmakers) {
   };
 }
 
+// ── Spreads (Asian Handicap) ─────────────────────────────────────────────────
+
+// Quarter lines: ±0.25, ±0.75, ±1.25 — (abs × 4) is odd
+function esLineaCuarto(line) {
+  return Math.round(Math.abs(line) * 4) % 2 !== 0;
+}
+
+/**
+ * Procesa el market "spreads" (Asian Handicap) de la respuesta de The Odds API.
+ *
+ * - Clasifica cada línea como 'oficial' (±0.5, ±1.0, ±1.5) o
+ *   'linea_cuarto_informativa' (±0.25, ±0.75, ±1.25).
+ * - Las líneas oficiales se indexan con 1 decimal: AH_local_-0.5, AH_visitante_+1.0.
+ * - Las líneas cuarto se indexan con 2 decimales: AH_local_-0.75.
+ * - La cuota agregada es la mediana entre bookmakers.
+ *
+ * @returns {object|null}  null si ningún bookmaker tiene el market "spreads".
+ */
+function procesarSpreads(bookmakers, homeTeam, awayTeam) {
+  const nh = norm(homeTeam);
+  const na = norm(awayTeam);
+
+  const porLinea = new Map(); // `${side}|${line}` → { side, line, prices[], tipo }
+  let nBksSpreads = 0;
+
+  for (const bk of bookmakers) {
+    const mkt = (bk.markets ?? []).find(m => m.key === 'spreads');
+    if (!mkt) continue;
+    nBksSpreads++;
+
+    for (const oc of (mkt.outcomes ?? [])) {
+      if (oc.point == null || oc.price == null) continue;
+
+      const n = norm(oc.name ?? '');
+      let side;
+      if (n.includes(nh) || nh.includes(n))      side = 'local';
+      else if (n.includes(na) || na.includes(n))  side = 'visitante';
+      else continue;
+
+      const line   = oc.point;
+      const mapKey = `${side}|${line}`;
+      if (!porLinea.has(mapKey)) {
+        porLinea.set(mapKey, {
+          side, line, prices: [],
+          tipo: esLineaCuarto(line) ? 'linea_cuarto_informativa' : 'oficial',
+        });
+      }
+      porLinea.get(mapKey).prices.push(oc.price);
+    }
+  }
+
+  if (nBksSpreads === 0) return null;
+
+  const lineas_oficiales = {};
+  const lineas_cuarto    = {};
+
+  for (const [, { side, line, prices, tipo }] of porLinea) {
+    const med   = mediana(prices);
+    const signo = line >= 0 ? '+' : '-';
+    const entry = { side, line, mediana: med, n_bookmakers: prices.length, tipo };
+
+    if (tipo === 'oficial') {
+      const key = `AH_${side}_${signo}${Math.abs(line).toFixed(1)}`;
+      lineas_oficiales[key] = { ...entry, key_ah: key };
+    } else {
+      const key = `AH_${side}_${signo}${Math.abs(line).toFixed(2)}`;
+      lineas_cuarto[key]    = { ...entry, key_ah: key };
+    }
+  }
+
+  return {
+    criterio_agregacion:  'mediana',
+    n_bookmakers_spreads: nBksSpreads,
+    n_lineas_oficiales:   Object.keys(lineas_oficiales).length,
+    n_lineas_cuarto:      Object.keys(lineas_cuarto).length,
+    lineas_oficiales,
+    lineas_cuarto,
+  };
+}
+
 // ── Función principal exportada ──────────────────────────────────────────────
 
 /**
@@ -208,8 +288,9 @@ export function transformarRespuestaOddsApi(rawResponse, matchId, fechaPartido, 
   }
 
   // Procesar mercados
-  const h2h    = procesarH2h(bookmakers, home_team, away_team);
-  const totals = procesarTotals(bookmakers);
+  const h2h     = procesarH2h(bookmakers, home_team, away_team);
+  const totals  = procesarTotals(bookmakers);
+  const spreads = procesarSpreads(bookmakers, home_team, away_team);
 
   if (!h2h) {
     throw new Error(
@@ -225,8 +306,9 @@ export function transformarRespuestaOddsApi(rawResponse, matchId, fechaPartido, 
     fuente_api:     'the-odds-api-v4',
     region,
     mercados: {
-      ...(h2h    && { h2h }),
-      ...(totals && { totals }),
+      ...(h2h     && { h2h }),
+      ...(totals  && { totals }),
+      ...(spreads && { spreads }),
     },
   };
 }

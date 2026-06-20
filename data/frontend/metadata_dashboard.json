@@ -1,0 +1,29 @@
+{
+  "generated_at": "2026-06-20T18:01:10.395Z",
+  "policy_version": "V2.2-post-j1",
+  "official_pipeline": "scripts/generarRecomendacionesJ2FinalConservador.js",
+  "deprecated_scripts": [
+    {
+      "script": "scripts/generarRecomendacionesJ2Filtradas.js",
+      "razon": "Usa filtrarSenalesApuesta() (legacy). Reemplazado por el pipeline oficial."
+    }
+  ],
+  "jornada": 2,
+  "total_partidos": 24,
+  "conteo_VALUE_BET": 10,
+  "conteo_PROTECTED_ONLY": 5,
+  "conteo_WATCHLIST": 7,
+  "conteo_NO_BET": 2,
+  "conteo_TECHNICAL_ERROR": 0,
+  "combinadas_policy": {
+    "conservadoras_default": false,
+    "moderadas_default": false,
+    "especulativas_default": false,
+    "reason": "J1 audit: conservadoras 18.2% hit rate, -49.9% ROI; moderadas 13.2%; especulativas 5.4%",
+    "flags_requeridos": {
+      "conservadoras": "--include-conservadoras",
+      "moderadas": "--include-moderadas",
+      "especulativas": "--include-especulativas"
+    }
+  }
+}

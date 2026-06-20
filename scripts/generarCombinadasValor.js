@@ -55,10 +55,24 @@ const matchIdsArg = matchIdsFlagIdx !== -1
 if (!jornadaArg && matchIdsArg.length === 0) {
   console.error('\n  ERROR: debes pasar --jornada N o --matchIds <id,...>');
   console.error('  Ejemplos:');
-  console.error('    node scripts/generarCombinadasValor.js --jornada 1 --dry-run');
-  console.error('    node scripts/generarCombinadasValor.js --matchIds 537363,537369 --dry-run\n');
+  console.error('    node scripts/generarCombinadasValor.js --jornada 2 --dry-run --include-conservadoras');
+  console.error('    node scripts/generarCombinadasValor.js --jornada 2 --dry-run --include-moderadas');
+  console.error('    node scripts/generarCombinadasValor.js --jornada 2 --dry-run --include-especulativas');
+  console.error('    node scripts/generarCombinadasValor.js --matchIds 537363,537369 --dry-run --include-conservadoras\n');
+  console.error('  NINGUNA categoría está activa por defecto (auditoría J1: ROI negativo en todas).');
+  console.error('  Flags para activar categorías (pueden combinarse):');
+  console.error('    --include-conservadoras  Conservadoras (hit rate J1: 18.2%, ROI: -49.9%)');
+  console.error('    --include-moderadas      Moderadas     (hit rate J1: 13.2%)');
+  console.error('    --include-especulativas  Especulativas (hit rate J1: 5.4%)');
   process.exit(1);
 }
+
+// ── Política de combinadas (post-J1) ──────────────────────────────────────────
+// Evidencia J1: conservadoras 18.2% hit/-49.9% ROI, moderadas 13.2%, especulativas 5.4%.
+// NINGUNA categoría está activa por defecto — todas requieren flag explícito.
+const INCLUDE_CONSERVADORAS = args.includes('--include-conservadoras');
+const INCLUDE_MODERADAS     = args.includes('--include-moderadas');
+const INCLUDE_ESPECULATIVAS = args.includes('--include-especulativas');
 
 const HOY   = new Date().toISOString().slice(0, 10);
 const LABEL = matchIdsArg.length > 0 ? 'custom' : `j${jornadaArg}`;
@@ -416,20 +430,39 @@ conservadoras.sort(byEv);
 moderadas.sort(byEv);
 especulativas.sort(byEv);
 
-const TOP = 10;
-const topC = conservadoras.slice(0, TOP);
-const topM = moderadas.slice(0, TOP);
-const topE = especulativas.slice(0, TOP);
+// Nota: se calcula siempre el pool completo (para meta.resumen); el output se filtra por flags.
+console.log('\n  Combinadas desactivadas por defecto (auditoría J1 — ROI negativo en todas las categorías).');
 
-const totalCombos = conservadoras.length + moderadas.length + especulativas.length;
-console.log(`  Conservadoras : ${conservadoras.length}  (mostrando top ${Math.min(conservadoras.length, TOP)})`);
-console.log(`  Moderadas     : ${moderadas.length}  (mostrando top ${Math.min(moderadas.length, TOP)})`);
-console.log(`  Especulativas : ${especulativas.length}  (mostrando top ${Math.min(especulativas.length, TOP)})`);
-console.log(`  Total         : ${totalCombos}`);
+const TOP = 10;
+const topC = INCLUDE_CONSERVADORAS ? conservadoras.slice(0, TOP) : [];
+const topM = INCLUDE_MODERADAS     ? moderadas.slice(0, TOP)     : [];
+const topE = INCLUDE_ESPECULATIVAS ? especulativas.slice(0, TOP) : [];
+
+const totalCombos =
+    (INCLUDE_CONSERVADORAS ? conservadoras.length : 0)
+  + (INCLUDE_MODERADAS     ? moderadas.length     : 0)
+  + (INCLUDE_ESPECULATIVAS ? especulativas.length : 0);
+
+if (INCLUDE_CONSERVADORAS) {
+  console.log(`  Conservadoras : ${conservadoras.length}  (mostrando top ${Math.min(conservadoras.length, TOP)})  ✓ activas (--include-conservadoras)`);
+} else {
+  console.log(`  Conservadoras : ${conservadoras.length} encontradas  —  OFF por defecto (hit rate J1: 18.2%, ROI: -49.9%)  [usar --include-conservadoras]`);
+}
+if (INCLUDE_MODERADAS) {
+  console.log(`  Moderadas     : ${moderadas.length}  (mostrando top ${Math.min(moderadas.length, TOP)})  ✓ activas (--include-moderadas)`);
+} else {
+  console.log(`  Moderadas     : ${moderadas.length} encontradas  —  OFF por defecto (hit rate J1: 13.2%)  [usar --include-moderadas]`);
+}
+if (INCLUDE_ESPECULATIVAS) {
+  console.log(`  Especulativas : ${especulativas.length}  (mostrando top ${Math.min(especulativas.length, TOP)})  ✓ activas (--include-especulativas)`);
+} else {
+  console.log(`  Especulativas : ${especulativas.length} encontradas  —  OFF por defecto (hit rate J1: 5.4%)  [usar --include-especulativas]`);
+}
+console.log(`  Total activas : ${totalCombos}`);
 
 // ── Preview consola ───────────────────────────────────────────────────────────
 
-if (topC.length > 0) {
+if (INCLUDE_CONSERVADORAS && topC.length > 0) {
   console.log('\n  Top 3 conservadoras:');
   for (const c of topC.slice(0, 3)) {
     console.log(`    ${c.justificacion}`);
@@ -559,23 +592,47 @@ function seccionCombinadas(num, titulo, combos, total, nota) {
   }
 }
 
-seccionCombinadas(
-  4, 'Combinadas conservadoras',
-  topC, conservadoras.length,
-  `Ambas selecciones superan los filtros más estrictos: cuota_combinada ≤ ${CONS_CUOTA_MAX}, prob_combinada ≥ ${pct(CONS_PROB_MIN)}, ningún empate, cuotas individuales ≤ ${CONS_ODDS_IND_MAX}, probs individuales ≥ ${pct(CONS_PROB_IND_MIN)}.`
-);
+if (INCLUDE_CONSERVADORAS) {
+  seccionCombinadas(
+    4, 'Combinadas conservadoras',
+    topC, conservadoras.length,
+    `Ambas selecciones superan los filtros más estrictos: cuota_combinada ≤ ${CONS_CUOTA_MAX}, prob_combinada ≥ ${pct(CONS_PROB_MIN)}, ningún empate, cuotas individuales ≤ ${CONS_ODDS_IND_MAX}, probs individuales ≥ ${pct(CONS_PROB_IND_MIN)}.`
+  );
+} else {
+  L.push(`## 4. Combinadas conservadoras — DESACTIVADAS`);
+  L.push(``);
+  L.push(`> ${conservadoras.length} combinadas encontradas. Desactivadas por defecto (hit rate J1: 18.2%, ROI: -49.9%).`);
+  L.push(`> Para activarlas: \`--include-conservadoras\``);
+  L.push(``);
+}
 
-seccionCombinadas(
-  5, 'Combinadas moderadas',
-  topM, moderadas.length,
-  `cuota_combinada ${MOD_CUOTA_MIN}–${MOD_CUOTA_MAX}, prob_combinada ≥ ${pct(MOD_PROB_MIN)}, máx. 1 empate/underdog, cuotas ind. ≤ ${MOD_ODDS_IND_MAX}, probs ind. ≥ ${pct(MOD_PROB_IND_MIN)}. No pasa el filtro conservador.`
-);
+if (INCLUDE_MODERADAS) {
+  seccionCombinadas(
+    5, 'Combinadas moderadas',
+    topM, moderadas.length,
+    `cuota_combinada ${MOD_CUOTA_MIN}–${MOD_CUOTA_MAX}, prob_combinada ≥ ${pct(MOD_PROB_MIN)}, máx. 1 empate/underdog, cuotas ind. ≤ ${MOD_ODDS_IND_MAX}, probs ind. ≥ ${pct(MOD_PROB_IND_MIN)}. No pasa el filtro conservador.`
+  );
+} else {
+  L.push(`## 5. Combinadas moderadas — DESACTIVADAS`);
+  L.push(``);
+  L.push(`> ${moderadas.length} combinadas encontradas. Desactivadas por defecto (hit rate J1: 13.2%, ROI: -33.2%).`);
+  L.push(`> Para activarlas: \`--include-moderadas\``);
+  L.push(``);
+}
 
-seccionCombinadas(
-  6, 'Combinadas especulativas',
-  topE, especulativas.length,
-  '⚠️ No alcanza los criterios de conservadora ni moderada. Puede incluir cuotas altas, empates dobles, underdogs fuertes, probabilidades bajas o combinada > 7.00. Solo contexto analítico.'
-);
+if (INCLUDE_ESPECULATIVAS) {
+  seccionCombinadas(
+    6, 'Combinadas especulativas',
+    topE, especulativas.length,
+    '⚠️ No alcanza los criterios de conservadora ni moderada. Puede incluir cuotas altas, empates dobles, underdogs fuertes, probabilidades bajas o combinada > 7.00. Solo contexto analítico.'
+  );
+} else {
+  L.push(`## 6. Combinadas especulativas — DESACTIVADAS`);
+  L.push(``);
+  L.push(`> ${especulativas.length} combinadas encontradas. Desactivadas por defecto (hit rate J1: 5.4%, ROI: negativo).`);
+  L.push(`> Para activarlas: \`--include-especulativas\``);
+  L.push(``);
+}
 
 // ── §7 Resumen ────────────────────────────────────────────────────────────────
 
@@ -664,9 +721,9 @@ fs.writeFileSync(OUT, L.join('\n'), 'utf8');
 // ── Exportar JSON ─────────────────────────────────────────────────────────────
 
 const todasOrdenadas = [
-  ...conservadoras.map((c, i) => buildComboJson(c, 'conservadora', i + 1)),
-  ...moderadas.map((c, i)     => buildComboJson(c, 'moderada',     i + 1)),
-  ...especulativas.map((c, i) => buildComboJson(c, 'especulativa', i + 1)),
+  ...(INCLUDE_CONSERVADORAS ? conservadoras.map((c, i)  => buildComboJson(c, 'conservadora', i + 1)) : []),
+  ...(INCLUDE_MODERADAS     ? moderadas.map((c, i)      => buildComboJson(c, 'moderada',     i + 1)) : []),
+  ...(INCLUDE_ESPECULATIVAS ? especulativas.map((c, i)  => buildComboJson(c, 'especulativa', i + 1)) : []),
 ];
 
 const jsonOutput = {
@@ -677,6 +734,17 @@ const jsonOutput = {
     partidos_leidos:  predicciones.length,
     señales_usadas:   señalesValidas.length,
     total_combinadas: totalCombos,
+    combinadas_policy: {
+      conservadoras_default:  false,
+      moderadas_default:      false,
+      especulativas_default:  false,
+      reason: 'J1 audit: conservadoras 18.2% hit rate, -49.9% ROI; moderadas 13.2%; especulativas 5.4%',
+      flags_activos: {
+        conservadoras:  INCLUDE_CONSERVADORAS,
+        moderadas:      INCLUDE_MODERADAS,
+        especulativas:  INCLUDE_ESPECULATIVAS,
+      },
+    },
     resumen: {
       conservadoras: conservadoras.length,
       moderadas:     moderadas.length,
@@ -710,6 +778,16 @@ fs.writeFileSync(OUT_JSON, JSON.stringify(jsonOutput, null, 2), 'utf8');
 console.log(`\n  ✓ Markdown : ${OUT}`);
 console.log(`  ✓ JSON     : ${OUT_JSON}`);
 console.log(`  Líneas MD  : ${L.length}`);
-console.log(`  Combos JSON: ${todasOrdenadas.length} total (${conservadoras.length} cons + ${moderadas.length} mod + ${especulativas.length} esp)`);
+const consActivas = INCLUDE_CONSERVADORAS ? conservadoras.length : 0;
+const modActivas  = INCLUDE_MODERADAS     ? moderadas.length     : 0;
+const espActivas  = INCLUDE_ESPECULATIVAS ? especulativas.length : 0;
+console.log(`  Combos JSON: ${todasOrdenadas.length} total (${consActivas} cons + ${modActivas} mod + ${espActivas} esp)`);
+const desactivadas = [];
+if (!INCLUDE_CONSERVADORAS) desactivadas.push(`conservadoras (${conservadoras.length}, usa --include-conservadoras)`);
+if (!INCLUDE_MODERADAS)     desactivadas.push(`moderadas (${moderadas.length}, usa --include-moderadas)`);
+if (!INCLUDE_ESPECULATIVAS) desactivadas.push(`especulativas (${especulativas.length}, usa --include-especulativas)`);
+if (desactivadas.length > 0) {
+  console.log(`  Desactivadas: ${desactivadas.join(' · ')}`);
+}
 console.log(`  Combos MD  : top ${topC.length} cons + top ${topM.length} mod + top ${topE.length} esp`);
 console.log('═'.repeat(76));

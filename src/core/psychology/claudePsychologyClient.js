@@ -17,7 +17,7 @@ const ANTHROPIC_API_URL  = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_VERSION  = '2023-06-01';
 const ANTHROPIC_BETA     = 'web-search-2025-03-05';
 const MODELO_DEFAULT     = 'claude-haiku-4-5-20251001';
-const MAX_TOKENS_DEFAULT = 4096;
+const MAX_TOKENS_DEFAULT = 8000;
 
 // ── Extracción de texto desde la respuesta de la API ─────────────────────────
 

@@ -1,0 +1,265 @@
+{
+  "generated_at": "2026-06-18T07:10:31.734Z",
+  "source": "reports/auditoria_lambdas_j2_vs_mercado.json",
+  "rules": {
+    "A_USABLE": "permitir señales normales filtradas",
+    "B_SOLO_PROTEGIDOS": "permitir solo mercados protegidos (under/over conservador, handicap +1.5/+2/+2.5, doble oportunidad)",
+    "C_BLOQUEAR_APUESTAS": "no generar ninguna recomendación",
+    "D_RECALCULAR_PREDICCION": "no generar ninguna recomendación hasta recalcular"
+  },
+  "resumen": {
+    "A": 13,
+    "B": 5,
+    "C": 2,
+    "D": 4
+  },
+  "matches": [
+    {
+      "matchId": "537399",
+      "partido": "Argentina vs Austria",
+      "risk_class": "D_RECALCULAR_PREDICCION",
+      "motivos": [
+        "MODELO_INVERTIDO"
+      ],
+      "max_abs_diff": 0.4346,
+      "cambio_favorito": true,
+      "accion": "BLOQUEAR_HASTA_RECALCULAR"
+    },
+    {
+      "matchId": "537366",
+      "partido": "New Zealand vs Egypt",
+      "risk_class": "D_RECALCULAR_PREDICCION",
+      "motivos": [
+        "MODELO_INVERTIDO"
+      ],
+      "max_abs_diff": 0.3605,
+      "cambio_favorito": true,
+      "accion": "BLOQUEAR_HASTA_RECALCULAR"
+    },
+    {
+      "matchId": "537360",
+      "partido": "Tunisia vs Japan",
+      "risk_class": "D_RECALCULAR_PREDICCION",
+      "motivos": [
+        "MODELO_INVERTIDO",
+        "UNDERDOG_SOBRESTIMADO"
+      ],
+      "max_abs_diff": 0.3493,
+      "cambio_favorito": true,
+      "accion": "BLOQUEAR_HASTA_RECALCULAR"
+    },
+    {
+      "matchId": "537400",
+      "partido": "Jordan vs Algeria",
+      "risk_class": "D_RECALCULAR_PREDICCION",
+      "motivos": [
+        "MODELO_INVERTIDO"
+      ],
+      "max_abs_diff": 0.2576,
+      "cambio_favorito": true,
+      "accion": "BLOQUEAR_HASTA_RECALCULAR"
+    },
+    {
+      "matchId": "537354",
+      "partido": "Ecuador vs Curaçao",
+      "risk_class": "C_BLOQUEAR_APUESTAS",
+      "motivos": [
+        "FAVORITO_GRANDE_SUBESTIMADO"
+      ],
+      "max_abs_diff": 0.4735,
+      "cambio_favorito": false,
+      "accion": "BLOQUEAR"
+    },
+    {
+      "matchId": "537341",
+      "partido": "Brazil vs Haiti",
+      "risk_class": "C_BLOQUEAR_APUESTAS",
+      "motivos": [
+        "FAVORITO_GRANDE_SUBESTIMADO"
+      ],
+      "max_abs_diff": 0.3448,
+      "cambio_favorito": false,
+      "accion": "BLOQUEAR"
+    },
+    {
+      "matchId": "537394",
+      "partido": "Norway vs Senegal",
+      "risk_class": "B_SOLO_PROTEGIDOS",
+      "motivos": [
+        "GAP_MERCADO_ALTO"
+      ],
+      "max_abs_diff": 0.412,
+      "cambio_favorito": false,
+      "accion": "SOLO_MERCADOS_PROTEGIDOS"
+    },
+    {
+      "matchId": "537365",
+      "partido": "Belgium vs Iran",
+      "risk_class": "B_SOLO_PROTEGIDOS",
+      "motivos": [
+        "LAMBDA_EXTREMA",
+        "GAP_MERCADO_ALTO"
+      ],
+      "max_abs_diff": 0.2556,
+      "cambio_favorito": false,
+      "accion": "SOLO_MERCADOS_PROTEGIDOS"
+    },
+    {
+      "matchId": "537359",
+      "partido": "Netherlands vs Sweden",
+      "risk_class": "B_SOLO_PROTEGIDOS",
+      "motivos": [
+        "GAP_MERCADO_ALTO"
+      ],
+      "max_abs_diff": 0.2273,
+      "cambio_favorito": false,
+      "accion": "SOLO_MERCADOS_PROTEGIDOS"
+    },
+    {
+      "matchId": "537406",
+      "partido": "Colombia vs Congo DR",
+      "risk_class": "B_SOLO_PROTEGIDOS",
+      "motivos": [
+        "GAP_MERCADO_ALTO"
+      ],
+      "max_abs_diff": 0.2176,
+      "cambio_favorito": false,
+      "accion": "SOLO_MERCADOS_PROTEGIDOS"
+    },
+    {
+      "matchId": "537336",
+      "partido": "Canada vs Qatar",
+      "risk_class": "B_SOLO_PROTEGIDOS",
+      "motivos": [
+        "LAMBDA_EXTREMA",
+        "GAP_MERCADO_ALTO"
+      ],
+      "max_abs_diff": 0.2087,
+      "cambio_favorito": false,
+      "accion": "SOLO_MERCADOS_PROTEGIDOS"
+    },
+    {
+      "matchId": "537372",
+      "partido": "Uruguay vs Cape Verde Islands",
+      "risk_class": "A_USABLE",
+      "motivos": [],
+      "max_abs_diff": 0.1852,
+      "cambio_favorito": false,
+      "accion": "PERMITIR_SENALES"
+    },
+    {
+      "matchId": "537412",
+      "partido": "Panama vs Croatia",
+      "risk_class": "A_USABLE",
+      "motivos": [],
+      "max_abs_diff": 0.1482,
+      "cambio_favorito": false,
+      "accion": "PERMITIR_SENALES"
+    },
+    {
+      "matchId": "537347",
+      "partido": "Turkey vs Paraguay",
+      "risk_class": "A_USABLE",
+      "motivos": [],
+      "max_abs_diff": 0.1057,
+      "cambio_favorito": false,
+      "accion": "PERMITIR_SENALES"
+    },
+    {
+      "matchId": "537329",
+      "partido": "Czechia vs South Africa",
+      "risk_class": "A_USABLE",
+      "motivos": [],
+      "max_abs_diff": 0.0872,
+      "cambio_favorito": false,
+      "accion": "PERMITIR_SENALES"
+    },
+    {
+      "matchId": "537330",
+      "partido": "Mexico vs South Korea",
+      "risk_class": "A_USABLE",
+      "motivos": [],
+      "max_abs_diff": 0.0866,
+      "cambio_favorito": false,
+      "accion": "PERMITIR_SENALES"
+    },
+    {
+      "matchId": "537411",
+      "partido": "England vs Ghana",
+      "risk_class": "A_USABLE",
+      "motivos": [
+        "LAMBDA_EXTREMA"
+      ],
+      "max_abs_diff": 0.0835,
+      "cambio_favorito": false,
+      "accion": "PERMITIR_SENALES"
+    },
+    {
+      "matchId": "537342",
+      "partido": "Scotland vs Morocco",
+      "risk_class": "A_USABLE",
+      "motivos": [],
+      "max_abs_diff": 0.0816,
+      "cambio_favorito": false,
+      "accion": "PERMITIR_SENALES"
+    },
+    {
+      "matchId": "537353",
+      "partido": "Germany vs Ivory Coast",
+      "risk_class": "A_USABLE",
+      "motivos": [],
+      "max_abs_diff": 0.0756,
+      "cambio_favorito": false,
+      "accion": "PERMITIR_SENALES"
+    },
+    {
+      "matchId": "537335",
+      "partido": "Switzerland vs Bosnia-Herzegovina",
+      "risk_class": "A_USABLE",
+      "motivos": [],
+      "max_abs_diff": 0.0435,
+      "cambio_favorito": false,
+      "accion": "PERMITIR_SENALES"
+    },
+    {
+      "matchId": "537371",
+      "partido": "Spain vs Saudi Arabia",
+      "risk_class": "A_USABLE",
+      "motivos": [],
+      "max_abs_diff": 0.0339,
+      "cambio_favorito": false,
+      "accion": "PERMITIR_SENALES"
+    },
+    {
+      "matchId": "537405",
+      "partido": "Portugal vs Uzbekistan",
+      "risk_class": "A_USABLE",
+      "motivos": [
+        "LAMBDA_EXTREMA"
+      ],
+      "max_abs_diff": 0.0263,
+      "cambio_favorito": false,
+      "accion": "PERMITIR_SENALES"
+    },
+    {
+      "matchId": "537393",
+      "partido": "France vs Iraq",
+      "risk_class": "A_USABLE",
+      "motivos": [
+        "LAMBDA_EXTREMA"
+      ],
+      "max_abs_diff": 0.012,
+      "cambio_favorito": false,
+      "accion": "PERMITIR_SENALES"
+    },
+    {
+      "matchId": "537348",
+      "partido": "United States vs Australia",
+      "risk_class": "A_USABLE",
+      "motivos": [],
+      "max_abs_diff": 0.0088,
+      "cambio_favorito": false,
+      "accion": "PERMITIR_SENALES"
+    }
+  ]
+}
